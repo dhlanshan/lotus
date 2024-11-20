@@ -2,6 +2,7 @@ package strutil
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -1509,5 +1510,331 @@ func TestRSplit(t *testing.T) {
 				t.Errorf("RSplit(%v, %v, %v) = %v; want %v", tt.s, tt.sep, tt.maxsplit, got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestRStrip(t *testing.T) {
+	tests := []struct {
+		s        string
+		chars    string
+		expected string
+	}{
+		{"hello   ", "", "hello"},
+		{"hello***", "*", "hello"},
+		{"你好世界!!!", "!", "你好世界"},
+		{"    ", "", ""},
+		{"123456789", "7689", "12345"},
+		{"hello", "", "hello"},      // No trailing whitespace
+		{"你好  世界  ", " ", "你好  世界"}, // Mixed whitespace
+	}
+
+	for _, tt := range tests {
+		result := RStrip(tt.s, tt.chars)
+		if result != tt.expected {
+			t.Errorf("RStrip(%q, %q) = %q; want %q", tt.s, tt.chars, result, tt.expected)
+		}
+	}
+}
+
+func BenchmarkRStrip(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_ = RStrip("hello   ", "")
+		_ = RStrip("hello***", "*")
+		_ = RStrip("你好世界!!!", "!")
+	}
+}
+
+func TestSplit(t *testing.T) {
+	tests := []struct {
+		input    string
+		sep      string
+		maxsplit int
+		expected []string
+	}{
+		{"a b c d e", " ", -1, []string{"a", "b", "c", "d", "e"}},
+		{"a b c d e", " ", 2, []string{"a", "b", "c d e"}},
+		{"a,b,c,d,e", ",", 3, []string{"a", "b", "c", "d,e"}},
+		{"a b c d e", "", 2, []string{"a b c d e"}}, // Empty separator
+		{"   hello world   ", " ", -1, []string{"", "", "", "hello", "world", "", "", ""}},
+		{"你好，世界，欢迎", "，", 1, []string{"你好", "世界，欢迎"}},
+		{"singleword", " ", -1, []string{"singleword"}},
+	}
+	for _, test := range tests {
+		got := Split(test.input, test.sep, test.maxsplit)
+		if !reflect.DeepEqual(got, test.expected) {
+			t.Errorf("Split(%q, %q, %d) = %v; want %v", test.input, test.sep, test.maxsplit, got, test.expected)
+		}
+	}
+}
+
+func TestSplitLines(t *testing.T) {
+	tests := []struct {
+		input    string
+		keepends bool
+		want     []string
+	}{
+		{"", false, []string{}},
+		{"hello\nworld", false, []string{"hello", "world"}},
+		{"hello\nworld", true, []string{"hello\n", "world"}},
+		{"hello\r\nworld", false, []string{"hello", "world"}},
+		{"hello\r\nworld", true, []string{"hello\r\n", "world"}},
+		{"hello\n", false, []string{"hello"}},
+		{"hello\n", true, []string{"hello\n"}},
+		{"hello\r", false, []string{"hello"}},
+		{"hello\r", true, []string{"hello\r"}},
+		{"\n\n\n", false, []string{"", "", ""}},
+		{"\n\n\n", true, []string{"\n", "\n", "\n"}},
+		{"hello", false, []string{"hello"}},
+		{"hello", true, []string{"hello"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("SplitLines(%q, %v)", tt.input, tt.keepends), func(t *testing.T) {
+			got := SplitLines(tt.input, tt.keepends)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SplitLines(%q, %v) = %v; want %v", tt.input, tt.keepends, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestStartsWith(t *testing.T) {
+	tests := []struct {
+		s, prefix  string
+		start, end int
+		want       bool
+	}{
+		{"hello world", "hello", 0, -1, true},
+		{"hello world", "world", 0, -1, false},
+		{"hello world", "world", 6, -1, false},
+		{"hello world", "world", -5, -1, false},
+		{"hello world", "hello", 0, 5, true},
+		{"hello world", "hello", 0, 4, false},
+		{"hello world", "", 0, -1, true},
+		{"hello world", "hello", 6, 5, false},
+		{"hello world", "world", 6, 11, true},
+		{"hello world", "lo", -7, -5, false},
+		{"hello world", "hello", -100, 5, true},
+		{"hello world", "world", 6, 100, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("StartsWith(%q, %q, %d, %d)", tt.s, tt.prefix, tt.start, tt.end), func(t *testing.T) {
+			got := StartsWith(tt.s, tt.prefix, tt.start, tt.end)
+			if got != tt.want {
+				t.Errorf("StartsWith(%q, %q, %d, %d) = %v; want %v", tt.s, tt.prefix, tt.start, tt.end, got, tt.want)
+			}
+		})
+	}
+}
+
+func BenchmarkStartsWith(b *testing.B) {
+	longString := strings.Repeat("a", 1000000) + "prefix" // 长字符串，末尾包含目标前
+
+	tests := []struct {
+		name       string
+		s          string
+		prefix     string
+		start, end int
+	}{
+		{"ShortString_Match", "hello world", "hello", 0, -1},
+		{"ShortString_NoMatch", "hello world", "world", 0, 5},
+		{"LongString_Match", longString, "prefix", 999995, -1},
+		{"LongString_NoMatch", longString, "notprefix", 0, -1},
+		{"NegativeIndices", "hello world", "lo", -7, -5},
+		{"OutOfBounds", "hello world", "hello", -100, 5},
+	}
+
+	for _, tt := range tests {
+		b.Run(tt.name, func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				StartsWith(tt.s, tt.prefix, tt.start, tt.end)
+			}
+		})
+	}
+}
+
+func TestSwapCase(t *testing.T) {
+	tests := []struct {
+		input, expected string
+	}{
+		{"Hello World", "hELLO wORLD"},
+		{"123", "123"},
+		{"ÄÖÜßäöü", "äöüẞÄÖÜ"},
+		{"GoLang", "gOlANG"},
+		{"", ""},
+	}
+
+	for _, test := range tests {
+		result := SwapCase(test.input)
+		if result != test.expected {
+			t.Errorf("SwapCase(%q) = %q; want %q", test.input, result, test.expected)
+		}
+	}
+}
+
+func BenchmarkSwapCase(b *testing.B) {
+	s := strings.Repeat("Hello123ÄÖÜß", 1000) // 长字符串
+	for i := 0; i < b.N; i++ {
+		SwapCase(s)
+	}
+}
+
+func TestTitle(t *testing.T) {
+	tests := []struct {
+		input, expected string
+	}{
+		{"hello world", "Hello World"},
+		{"HELLO WORLD", "Hello World"},
+		{"123 abc DEF", "123 Abc Def"},
+		{"a b c", "A B C"},
+		{"こんにちは 世界", "こんにちは 世界"},             // 非拉丁字符应保持不变
+		{"\thello\nworld", "\tHello\nWorld"}, // 特殊字符处理
+		{"", ""},
+	}
+
+	for _, test := range tests {
+		result := Title(test.input)
+		if result != test.expected {
+			t.Errorf("Title(%q) = %q; want %q", test.input, result, test.expected)
+		}
+	}
+}
+
+func BenchmarkTitle(b *testing.B) {
+	s := strings.Repeat("hello world\n123 abc DEF\t", 1000) // 长字符串
+	for i := 0; i < b.N; i++ {
+		Title(s)
+	}
+}
+
+func TestTranslate(t *testing.T) {
+	tests := []struct {
+		input    string
+		table    map[rune]rune
+		expected string
+	}{
+		{"hello", map[rune]rune{'h': 'H', 'e': 'E'}, "HEllo"},
+		{"abc", map[rune]rune{'a': 'x', 'b': -1, 'c': 'z'}, "xz"},
+		{"123", map[rune]rune{'1': '!', '3': -1}, "!2"},
+		{"こんにちは", map[rune]rune{'こ': 'K', 'に': -1}, "Kんちは"},
+		{"", map[rune]rune{'a': 'x'}, ""}, // 空字符串测试
+	}
+
+	for _, test := range tests {
+		result := Translate(test.input, test.table)
+		if result != test.expected {
+			t.Errorf("Translate(%q, %v) = %q; want %q", test.input, test.table, result, test.expected)
+		}
+	}
+}
+
+func BenchmarkTranslate(b *testing.B) {
+	s := strings.Repeat("hello 世界 123", 1000) // 长字符串测试
+	table := map[rune]rune{'h': 'H', 'e': 'E', '1': '!', '世': 'W', '界': -1}
+
+	for i := 0; i < b.N; i++ {
+		Translate(s, table)
+	}
+}
+
+// TestUpper tests the Upper function.
+func TestUpper(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"hello", "HELLO"},
+		{"hello world", "HELLO WORLD"},
+		{"gO", "GO"},
+		{"HELLO", "HELLO"},
+		{"123abc", "123ABC"},
+		{"", ""},
+		{"ßstraße", "ßSTRAßE"}, // Testing special character ß
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := Upper(tt.input)
+			if result != tt.expected {
+				t.Errorf("Upper(%q) = %q; want %q", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkUpper(b *testing.B) {
+	// Test with a typical string
+	input := "hello world"
+	b.ResetTimer()
+
+	// Run the benchmark
+	for i := 0; i < b.N; i++ {
+		Upper(input)
+	}
+}
+
+func BenchmarkUpperLongString(b *testing.B) {
+	// Test with a larger string
+	input := "hello world " + strings.Repeat("x", 1000) // Corrected: Using strings.Repeat
+	b.ResetTimer()
+
+	// Run the benchmark
+	for i := 0; i < b.N; i++ {
+		Upper(input)
+	}
+}
+
+func TestZFill(t *testing.T) {
+	tests := []struct {
+		input    string
+		width    int
+		expected string
+	}{
+		// 常规情况
+		{"123", 5, "00123"},
+		{"abc", 6, "000abc"},
+		{"hello", 10, "00000hello"},
+		// 负数
+		{"-123", 6, "-0123"},
+		// 带正号
+		{"+123", 6, "+0123"},
+		// 不需要填充
+		{"123", 3, "123"},
+		{"abc", 3, "abc"},
+		// 边界情况
+		{"", 5, "00000"},
+		{"12345", 3, "12345"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			result := ZFill(tt.input, tt.width)
+			if result != tt.expected {
+				t.Errorf("ZFill(%q, %d) = %q; want %q", tt.input, tt.width, result, tt.expected)
+			}
+		})
+	}
+}
+
+func BenchmarkZFill(b *testing.B) {
+	// Test with a typical string
+	input := "123"
+	width := 10
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ZFill(input, width)
+	}
+}
+
+func BenchmarkZFillWithSign(b *testing.B) {
+	// Test with a sign
+	input := "-123"
+	width := 10
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ZFill(input, width)
 	}
 }

@@ -636,51 +636,51 @@ func RPartition(s, sep string) (string, string, string) {
 
 // RSplit splits the string by the specified separator `sep` starting from the right.
 // If `sep` is None (empty string), it splits on whitespace.
-// maxsplit determines the maximum number of splits. Default is -1 (no limit).
-func RSplit(s, sep string, maxsplit int) []string {
+// maxSplit determines the maximum number of splits. Default is -1 (no limit).
+func RSplit(s, sep string, maxSplit int) []string {
 	if sep == "" {
-		return rsplitWhitespace(s, maxsplit)
+		return rsplitWhitespace(s, maxSplit)
 	}
 
-	if maxsplit == 0 {
+	if maxSplit == 0 {
 		return []string{s} // No splitting needed
 	}
 
 	if len(sep) == 1 {
-		return rsplitSingleChar(s, rune(sep[0]), maxsplit)
+		return rsplitSingleChar(s, rune(sep[0]), maxSplit)
 	}
 
 	// Use sep for splitting
 	parts := strings.Split(s, sep)
-	if maxsplit < 0 || maxsplit >= len(parts)-1 {
+	if maxSplit < 0 || maxSplit >= len(parts)-1 {
 		return parts
 	}
 
-	// Combine parts to enforce maxsplit
-	remaining := parts[:len(parts)-maxsplit]
+	// Combine parts to enforce maxSplit
+	remaining := parts[:len(parts)-maxSplit]
 	last := strings.Join(remaining, sep)
-	return append([]string{last}, parts[len(parts)-maxsplit:]...)
+	return append([]string{last}, parts[len(parts)-maxSplit:]...)
 }
 
 // rsplitWhitespace splits a string based on whitespace from the right.
-func rsplitWhitespace(s string, maxsplit int) []string {
+func rsplitWhitespace(s string, maxSplit int) []string {
 	fields := strings.Fields(s) // Splits on all whitespace
-	if maxsplit < 0 || maxsplit >= len(fields)-1 {
+	if maxSplit < 0 || maxSplit >= len(fields)-1 {
 		return fields
 	}
 
-	// Combine parts to enforce maxsplit
-	remaining := fields[:len(fields)-maxsplit]
+	// Combine parts to enforce maxSplit
+	remaining := fields[:len(fields)-maxSplit]
 	last := strings.Join(remaining, " ")
-	return append([]string{last}, fields[len(fields)-maxsplit:]...)
+	return append([]string{last}, fields[len(fields)-maxSplit:]...)
 }
 
 // rsplitSingleChar splits the string by a single character separator starting from the right.
-func rsplitSingleChar(s string, sep rune, maxsplit int) []string {
+func rsplitSingleChar(s string, sep rune, maxSplit int) []string {
 	// If the separator is a single character, use LastIndex for better performance
-	parts := []string{}
+	parts := make([]string, 0)
 	start := len(s)
-	for count := 0; count < maxsplit && start > 0; {
+	for count := 0; count < maxSplit && start > 0; {
 		index := strings.LastIndexByte(s[:start], byte(sep))
 		if index == -1 {
 			break
@@ -696,35 +696,28 @@ func rsplitSingleChar(s string, sep rune, maxsplit int) []string {
 // RStrip removes trailing characters specified in `chars` from the string `s`.
 // If `chars` is not provided, it defaults to removing whitespace.
 func RStrip(s string, chars ...string) string {
-	var charSet map[rune]bool
-
-	// Default to whitespace characters if `chars` is not provided
-	if len(chars) == 0 {
-		return rstripWhitespace(s)
+	if len(chars) == 0 || chars[0] == "" {
+		return rStripHelper(s, unicode.IsSpace)
 	}
 
-	// Create a set of characters from `chars`
-	charSet = make(map[rune]bool)
+	charSet := make(map[rune]struct{})
 	for _, r := range chars[0] {
-		charSet[r] = true
+		charSet[r] = struct{}{}
 	}
 
-	// Find the index to slice the string
-	end := len(s)
-	for i := len(s) - 1; i >= 0; i-- {
-		if !charSet[rune(s[i])] {
-			break
-		}
-		end = i
+	isInCharSet := func(r rune) bool {
+		_, exists := charSet[r]
+		return exists
 	}
-	return s[:end]
+
+	return rStripHelper(s, isInCharSet)
 }
 
-// rstripWhitespace removes trailing whitespace characters from `s`.
-func rstripWhitespace(s string) string {
+// rStripHelper removes trailing characters from `s` that satisfy the given predicate `shouldRemove`.
+func rStripHelper(s string, shouldRemove func(rune) bool) string {
 	end := len(s)
 	for i := len(s) - 1; i >= 0; i-- {
-		if !unicode.IsSpace(rune(s[i])) {
+		if !shouldRemove(rune(s[i])) {
 			break
 		}
 		end = i
@@ -733,106 +726,109 @@ func rstripWhitespace(s string) string {
 }
 
 // Split splits the string `s` by the specified separator `sep`.
-// If `sep` is `None`, it splits by whitespace. The `maxsplit` limits the number of splits.
-func Split(s, sep string, maxsplit int) []string {
-	if sep == "" {
-		// Default to whitespace splitting if `sep` is empty (None in Python)
-		return splitWhitespace(s, maxsplit)
+// If `sep` is empty, it splits by whitespace. The `maxSplit` limits the number of splits.
+func Split(s, sep string, maxSplit int) []string {
+	if maxSplit == 0 || sep == "" {
+		return []string{s}
 	}
-	// Split by the specified separator
-	return splitBySeparator(s, sep, maxsplit)
-}
-
-// splitWhitespace splits the string `s` by whitespace characters.
-func splitWhitespace(s string, maxsplit int) []string {
-	// Using strings.Fields to split by whitespace
-	fields := strings.Fields(s)
-	if maxsplit < 0 || maxsplit >= len(fields)-1 {
-		return fields
+	if maxSplit < 0 {
+		maxSplit = len(s)
 	}
 
-	// Apply maxsplit if needed
-	return append(fields[:len(fields)-maxsplit], strings.Join(fields[len(fields)-maxsplit:], " "))
-}
+	result := make([]string, 0, maxSplit+1)
+	start := 0
 
-// splitBySeparator splits the string `s` by the specified separator `sep` and applies `maxsplit`.
-func splitBySeparator(s, sep string, maxsplit int) []string {
-	// Split by separator using strings.Split
-	parts := strings.Split(s, sep)
-	if maxsplit < 0 || maxsplit >= len(parts)-1 {
-		return parts
+	for count := 0; count < maxSplit; count++ {
+		index := strings.Index(s[start:], sep)
+		if index == -1 {
+			break
+		}
+
+		index += start
+		result = append(result, s[start:index])
+		start = index + len(sep)
 	}
 
-	// Apply maxsplit if needed
-	return append(parts[:len(parts)-maxsplit], strings.Join(parts[len(parts)-maxsplit:], sep))
+	result = append(result, s[start:])
+	return result
 }
 
 // SplitLines splits a string into lines based on universal newline characters.
 // If `keepends` is true, the line-ending characters are retained.
 func SplitLines(s string, keepends bool) []string {
-	var result []string
-	var lineStart int
+	if s == "" {
+		return []string{}
+	}
 
-	for i, r := range s {
-		if isNewline(r) {
-			// Include the newline character(s) if keepends is true
+	var result []string
+	lineStart := 0
+
+	for i := 0; i < len(s); {
+		r, size := utf8.DecodeRuneInString(s[i:])
+		switch r {
+		case '\n':
 			if keepends {
-				result = append(result, s[lineStart:i+1])
+				result = append(result, s[lineStart:i+size])
 			} else {
 				result = append(result, s[lineStart:i])
 			}
-			// Handle CRLF ("\r\n")
-			if r == '\r' && i+1 < len(s) && s[i+1] == '\n' {
-				lineStart = i + 2
+			i += size
+			lineStart = i
+		case '\r':
+			if i+1 < len(s) && s[i+1] == '\n' {
+				if keepends {
+					result = append(result, s[lineStart:i+2])
+				} else {
+					result = append(result, s[lineStart:i])
+				}
+				i += 2
 			} else {
-				lineStart = i + 1
+				if keepends {
+					result = append(result, s[lineStart:i+size])
+				} else {
+					result = append(result, s[lineStart:i])
+				}
+				i += size
 			}
+			lineStart = i
+		default:
+			i += size
 		}
 	}
 
-	// Append the last line if there's no trailing newline
 	if lineStart < len(s) {
 		result = append(result, s[lineStart:])
 	}
-	return result
-}
 
-// isNewline checks if a rune is a universal newline character.
-func isNewline(r rune) bool {
-	switch r {
-	case '\n', '\r', '\v', '\f', '\x1c', '\x1d', '\x1e', '\x85', '\u2028', '\u2029':
-		return true
-	}
-	return false
+	return result
 }
 
 // StartsWith checks if the string `s` starts with the prefix `prefix`.
 // Optional `start` and `end` parameters define the substring to check.
 func StartsWith(s, prefix string, start, end int) bool {
-	// Handle negative start and end indices
-	if start < 0 {
-		start = len(s) + start
-	}
-	if end < 0 {
-		end = len(s) + end
+	if prefix == "" {
+		return true
 	}
 
-	// Clamp start and end to valid ranges
+	start = normalizeIndex(start, len(s))
+	end = normalizeIndex(end, len(s))
+
 	if start < 0 {
 		start = 0
 	}
 	if end > len(s) {
 		end = len(s)
 	}
-	if start > end {
+	if start >= end {
 		return false
 	}
 
-	// Extract the substring
-	substring := s[start:end]
+	subLength := end - start
+	if len(prefix) > subLength {
+		return false
+	}
 
-	// Check if the substring starts with the prefix
-	return len(substring) >= len(prefix) && substring[:len(prefix)] == prefix
+	return s[start:start+len(prefix)] == prefix
 }
 
 // Strip removes characters specified in `chars` from both ends of the string `s`.
@@ -861,52 +857,72 @@ func Strip(s string, chars string) string {
 // SwapCase returns a copy of the string `s` with uppercase letters converted to lowercase
 // and lowercase letters converted to uppercase.
 func SwapCase(s string) string {
-	// Create a rune slice to efficiently build the transformed string
-	runes := []rune(s)
-	for i, r := range runes {
-		if unicode.IsUpper(r) {
-			runes[i] = unicode.ToLower(r)
+	var builder strings.Builder
+	builder.Grow(len(s)) // 提前分配足够的容量
+
+	for _, r := range s {
+		// 快速路径处理 ASCII 字符
+		if r >= 'A' && r <= 'Z' {
+			builder.WriteRune(r + 32) // 转为小写
+		} else if r >= 'a' && r <= 'z' {
+			builder.WriteRune(r - 32) // 转为大写
+		} else if r == 'ß' { // 处理 Unicode 特殊情况
+			builder.WriteRune('ẞ')
+		} else if unicode.IsUpper(r) {
+			builder.WriteRune(unicode.ToLower(r)) // 处理非 ASCII 大写
 		} else if unicode.IsLower(r) {
-			runes[i] = unicode.ToUpper(r)
+			builder.WriteRune(unicode.ToUpper(r)) // 处理非 ASCII 小写
+		} else {
+			builder.WriteRune(r) // 其他字符保持不变
 		}
 	}
-	return string(runes)
+
+	return builder.String()
 }
 
 // Title returns a copy of the string `s` where the first letter of each word is capitalized
 // and the rest of the letters are in lowercase.
 func Title(s string) string {
-	var result strings.Builder
+	var builder strings.Builder
+	builder.Grow(len(s)) // 提前分配容量，提高性能
+
 	previousIsSpace := true
 
 	for _, r := range s {
+		// 优化处理逻辑
 		if previousIsSpace && unicode.IsLetter(r) {
-			result.WriteRune(unicode.ToUpper(r))
+			builder.WriteRune(unicode.ToUpper(r)) // 首字母大写
 		} else {
-			result.WriteRune(unicode.ToLower(r))
+			builder.WriteRune(unicode.ToLower(r)) // 其余字符小写
 		}
-		previousIsSpace = unicode.IsSpace(r)
+		// 处理换行符和其他空白字符，统一判断是否是空白字符
+		previousIsSpace = unicode.IsSpace(r) || unicode.IsControl(r)
 	}
 
-	return result.String()
+	return builder.String()
 }
 
 // Translate replaces characters in the string `s` based on the mapping `table`.
 // If the value for a rune is `-1`, the character is removed.
 func Translate(s string, table map[rune]rune) string {
-	var result strings.Builder
+	// 提前分配容量以减少动态扩容
+	var builder strings.Builder
+	builder.Grow(len(s))
 
 	for _, r := range s {
-		if replacement, ok := table[r]; ok {
-			if replacement != -1 { // -1 indicates deletion
-				result.WriteRune(replacement)
+		// 查询字符替换映射
+		if replacement, exists := table[r]; exists {
+			// 如果映射值是 -1，则跳过此字符（删除）
+			if replacement != -1 {
+				builder.WriteRune(replacement)
 			}
 		} else {
-			result.WriteRune(r) // Keep the original character
+			// 如果没有映射，保留原字符
+			builder.WriteRune(r)
 		}
 	}
 
-	return result.String()
+	return builder.String()
 }
 
 // Upper returns a copy of the string `s` with all lowercase letters converted to uppercase.
@@ -928,13 +944,15 @@ func ZFill(s string, width int) string {
 	// Handle sign at the beginning
 	if len(s) > 0 && (s[0] == '+' || s[0] == '-') {
 		result.WriteByte(s[0]) // Write the sign
-		result.WriteString(strings.Repeat("0", padCount))
-		result.WriteString(s[1:]) // Append the rest of the string
-	} else {
-		// No sign, pad with zeros at the front
-		result.WriteString(strings.Repeat("0", padCount))
-		result.WriteString(s)
+		s = s[1:]              // Remove the sign from the string for the next steps
+		padCount--             // We don't need to pad the sign itself
 	}
+
+	// Write padding zeros
+	result.WriteString(strings.Repeat("0", padCount))
+
+	// Append the rest of the string
+	result.WriteString(s)
 
 	return result.String()
 }
