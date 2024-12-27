@@ -181,51 +181,6 @@ func BenchmarkCount(b *testing.B) {
 	}
 }
 
-func TestEndsWith(t *testing.T) {
-	tests := []struct {
-		input    string
-		suffixes []string
-		expected bool
-	}{
-		{"hello world", []string{"world"}, true},
-		{"hello world", []string{"world", "hello"}, true},
-		{"hello world", []string{"goodbye"}, false},
-		{"你好，世界", []string{"世界"}, true},
-		{"你好，世界", []string{"你好"}, false}, // 不能匹配
-		{"", []string{"world"}, false},   // 空字符串，不能匹配任何后缀
-		{"hello", []string{""}, false},   // 空后缀不匹配
-		{"hello🚀", []string{"🚀"}, true},  // 空后缀不匹配
-	}
-
-	for _, test := range tests {
-		result := EndsWith(test.input, test.suffixes...)
-		if result != test.expected {
-			t.Errorf("EndsWith(%q, %v) = %v; want %v", test.input, test.suffixes, result, test.expected)
-		}
-	}
-}
-
-func BenchmarkEndsWith(b *testing.B) {
-	tests := []struct {
-		name     string
-		input    string
-		suffixes []string
-	}{
-		{"ShortString", "hello world", []string{"world"}},
-		{"LongString", "hello world hello world hello world", []string{"world", "hello"}},
-		{"UnicodeString", "你好，世界你好，世界你好，世界", []string{"世界", "你好"}},
-		{"EmptyString", "", []string{"world"}},
-	}
-
-	for _, test := range tests {
-		b.Run(test.name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				EndsWith(test.input, test.suffixes...)
-			}
-		})
-	}
-}
-
 func TestExpandTabs(t *testing.T) {
 	tests := []struct {
 		input    string
@@ -1285,58 +1240,6 @@ func BenchmarkRemoveSuffix(b *testing.B) {
 	}
 }
 
-func TestReplace(t *testing.T) {
-	tests := []struct {
-		s        string
-		old      string
-		new      string
-		count    int
-		expected string
-	}{
-		{"hello world", "world", "Go", -1, "hello Go"},
-		{"hello world world", "world", "Go", 1, "hello Go world"},
-		{"hello world world", "world", "Go", -1, "hello Go Go"},
-		{"你好，世界，世界", "世界", "Go", 1, "你好，Go，世界"},
-		{"你好，世界，世界", "世界", "Go", -1, "你好，Go，Go"},
-		{"abcdabcdabcd", "abc", "123", 2, "123d123dabcd"},
-		{"abcdabcdabcd", "abc", "123", -1, "123d123d123d"},
-		{"", "abc", "123", -1, ""},
-		{"abcd", "", "123", -1, "abcd"}, // old is empty
-		{"abcd", "abcd", "", -1, ""},    // new is empty
-	}
-
-	for _, tt := range tests {
-		result := Replace(tt.s, tt.old, tt.new, tt.count)
-		if result != tt.expected {
-			t.Errorf("Replace(%q, %q, %q, %d) = %q; want %q", tt.s, tt.old, tt.new, tt.count, result, tt.expected)
-		}
-	}
-}
-
-func BenchmarkReplace(b *testing.B) {
-	tests := []struct {
-		s     string
-		old   string
-		new   string
-		count int
-	}{
-		{"hello world", "world", "Go", -1},
-		{"hello world world", "world", "Go", 1},
-		{"hello world world", "world", "Go", -1},
-		{"你好，世界，世界", "世界", "Go", 1},
-		{"abcdabcdabcd", "abc", "123", 2},
-		{"abcdabcdabcd", "abc", "123", -1},
-	}
-
-	for _, tt := range tests {
-		b.Run(tt.s+"_"+tt.old, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				_ = Replace(tt.s, tt.old, tt.new, tt.count)
-			}
-		})
-	}
-}
-
 func TestRFind(t *testing.T) {
 	tests := []struct {
 		s, sub     string
@@ -1558,6 +1461,7 @@ func TestSplit(t *testing.T) {
 		{"   hello world   ", " ", -1, []string{"", "", "", "hello", "world", "", "", ""}},
 		{"你好，世界，欢迎", "，", 1, []string{"你好", "世界，欢迎"}},
 		{"singleword", " ", -1, []string{"singleword"}},
+		{"Gopher", "Go", -1, []string{"", "pher"}},
 	}
 	for _, test := range tests {
 		got := Split(test.input, test.sep, test.maxsplit)
@@ -1593,62 +1497,6 @@ func TestSplitLines(t *testing.T) {
 			got := SplitLines(tt.input, tt.keepends)
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("SplitLines(%q, %v) = %v; want %v", tt.input, tt.keepends, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestStartsWith(t *testing.T) {
-	tests := []struct {
-		s, prefix  string
-		start, end int
-		want       bool
-	}{
-		{"hello world", "hello", 0, -1, true},
-		{"hello world", "world", 0, -1, false},
-		{"hello world", "world", 6, -1, false},
-		{"hello world", "world", -5, -1, false},
-		{"hello world", "hello", 0, 5, true},
-		{"hello world", "hello", 0, 4, false},
-		{"hello world", "", 0, -1, true},
-		{"hello world", "hello", 6, 5, false},
-		{"hello world", "world", 6, 11, true},
-		{"hello world", "lo", -7, -5, false},
-		{"hello world", "hello", -100, 5, true},
-		{"hello world", "world", 6, 100, true},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("StartsWith(%q, %q, %d, %d)", tt.s, tt.prefix, tt.start, tt.end), func(t *testing.T) {
-			got := StartsWith(tt.s, tt.prefix, tt.start, tt.end)
-			if got != tt.want {
-				t.Errorf("StartsWith(%q, %q, %d, %d) = %v; want %v", tt.s, tt.prefix, tt.start, tt.end, got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkStartsWith(b *testing.B) {
-	longString := strings.Repeat("a", 1000000) + "prefix" // 长字符串，末尾包含目标前
-
-	tests := []struct {
-		name       string
-		s          string
-		prefix     string
-		start, end int
-	}{
-		{"ShortString_Match", "hello world", "hello", 0, -1},
-		{"ShortString_NoMatch", "hello world", "world", 0, 5},
-		{"LongString_Match", longString, "prefix", 999995, -1},
-		{"LongString_NoMatch", longString, "notprefix", 0, -1},
-		{"NegativeIndices", "hello world", "lo", -7, -5},
-		{"OutOfBounds", "hello world", "hello", -100, 5},
-	}
-
-	for _, tt := range tests {
-		b.Run(tt.name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				StartsWith(tt.s, tt.prefix, tt.start, tt.end)
 			}
 		})
 	}

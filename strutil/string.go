@@ -73,8 +73,38 @@ func Count(s, sub string, start, end int) int {
 	return count
 }
 
-// EndsWith Check if the string ends with the specified suffix, can accept a single suffix or a tuple (multiple suffixes).
-func EndsWith(s string, suffixes ...string) bool {
+// ContainsAll checks whether all specified substrings are contained in the input string `s`.
+func ContainsAll(s string, substrings ...string) bool {
+	if len(substrings) == 0 {
+		return true
+	}
+
+	for _, substr := range substrings {
+		if !strings.Contains(s, substr) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// ContainsOneOf checks whether at least one of the specified substrings is contained in the input string `s`.
+func ContainsOneOf(s string, substrings ...string) bool {
+	if len(substrings) == 0 {
+		return false
+	}
+
+	for _, substr := range substrings {
+		if strings.Contains(s, substr) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// EndsWithOneOf Check if the string ends with the specified suffix, can accept a single suffix or a tuple (multiple suffixes).
+func EndsWithOneOf(s string, suffixes ...string) bool {
 	if len(suffixes) == 0 {
 		return false
 	}
@@ -536,25 +566,6 @@ func RemoveSuffix(s, suffix string) string {
 	return s
 }
 
-// Replace replaces occurrences of old with new in the string.
-// If count is -1, all occurrences are replaced. If count >= 0, only the first `count` occurrences are replaced.
-func Replace(s, old, new string, count int) string {
-	if old == "" {
-		return s // If old is empty, return the original string
-	}
-	if count == 0 {
-		return s // If count is 0, return the original string
-	}
-
-	if count < 0 {
-		// Replace all occurrences using strings.ReplaceAll
-		return strings.ReplaceAll(s, old, new)
-	}
-
-	// Replace the first `count` occurrences
-	return strings.Replace(s, old, new, count)
-}
-
 // RFind returns the highest index in the string where substring `sub` is found,
 // such that `sub` is contained within s[start:end]. Returns -1 if `sub` is not found.
 func RFind(s, sub string, start, end int) int {
@@ -803,32 +814,23 @@ func SplitLines(s string, keepends bool) []string {
 	return result
 }
 
-// StartsWith checks if the string `s` starts with the prefix `prefix`.
+// StartsWithOneOf checks if the string `s` starts with the prefix `prefix`.
 // Optional `start` and `end` parameters define the substring to check.
-func StartsWith(s, prefix string, start, end int) bool {
-	if prefix == "" {
-		return true
-	}
-
-	start = normalizeIndex(start, len(s))
-	end = normalizeIndex(end, len(s))
-
-	if start < 0 {
-		start = 0
-	}
-	if end > len(s) {
-		end = len(s)
-	}
-	if start >= end {
+func StartsWithOneOf(s string, suffixes ...string) bool {
+	if len(suffixes) == 0 {
 		return false
 	}
 
-	subLength := end - start
-	if len(prefix) > subLength {
-		return false
+	for _, suffix := range suffixes {
+		if suffix == "" {
+			continue
+		}
+		if strings.HasPrefix(s, suffix) {
+			return true
+		}
 	}
 
-	return s[start:start+len(prefix)] == prefix
+	return false
 }
 
 // Strip removes characters specified in `chars` from both ends of the string `s`.
