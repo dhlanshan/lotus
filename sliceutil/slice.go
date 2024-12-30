@@ -8,8 +8,8 @@ import (
 
 // Append appends an element to the end of the slice.
 // It mimics Python's list.append method.
-func Append[T any](slice []T, element T) []T {
-	return append(slice, element)
+func Append[T any](slice []T, element ...T) []T {
+	return append(slice, element...)
 }
 
 // Clear removes all elements from the given slice and returns an empty slice.
