@@ -34,6 +34,7 @@ func TestMemoryStore_Set_Get(t *testing.T) {
 	}
 	fmt.Println("---", value)
 	fmt.Println("---", ttl)
+	ms.Close()
 }
 
 // 测试 MemoryStore 的 Delete 方法
