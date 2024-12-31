@@ -13,13 +13,14 @@ type timeSlot struct {
 
 // TimeWheel 是时间轮的核心结构
 type TimeWheel struct {
-	slots        []*timeSlot   // 槽数组
-	slotCount    int           // 槽数
-	tickInterval time.Duration // 每个槽位的时间间隔
-	currentSlot  int           // 当前槽位置
-	ticker       *time.Ticker  // 定时器
-	stopChan     chan struct{} // 停止信号通道
-	store        *MemoryStore  // 引用 MemoryStore
+	slots        []*timeSlot    // 槽数组
+	slotCount    int            // 槽数
+	tickInterval time.Duration  // 每个槽位的时间间隔
+	currentSlot  int            // 当前槽位置
+	ticker       *time.Ticker   // 定时器
+	stopChan     chan struct{}  // 停止信号通道
+	store        *MemoryStore   // 引用 MemoryStore
+	wg           sync.WaitGroup // 等待 goroutine 完成
 }
 
 // NewTimeWheel 创建一个新的时间轮
@@ -70,15 +71,19 @@ func (tw *TimeWheel) calculateSlot(expireAt time.Time) int {
 
 // Start 启动时间轮
 func (tw *TimeWheel) Start() {
-	for {
-		select {
-		case <-tw.ticker.C:
-			tw.tick(tw.store)
-		case <-tw.stopChan:
-			tw.ticker.Stop()
-			return
+	tw.wg.Add(1) // 增加一个 goroutine 等待
+	go func() {
+		defer tw.wg.Done()
+		for {
+			select {
+			case <-tw.ticker.C:
+				tw.tick(tw.store) // 每次 tick
+			case <-tw.stopChan:
+				tw.ticker.Stop()
+				return
+			}
 		}
-	}
+	}()
 }
 
 // tick 时间轮每个槽位更新时处理过期的键

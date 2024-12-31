@@ -147,3 +147,11 @@ func (ms *MemoryStore) Stats() map[string]any {
 		"shardCount":  ms.shardCount,
 	}
 }
+
+// Close 停止时间轮并清理资源
+func (ms *MemoryStore) Close() {
+	// 停止时间轮
+	if ms.timeWheel != nil {
+		ms.timeWheel.Stop()
+	}
+}
