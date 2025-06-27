@@ -97,7 +97,7 @@ func Remove[T comparable](slice *[]T, value T) {
 //	nums := []int{1, 2, 3, 4}
 //	evens := Filter(nums, func(i, v int) bool { return v%2 == 0 })
 //	// evens: [2, 4]
-func Filter[T any](slice []T, predicate func(index int, item T) bool) []T {
+func Filter[S ~[]T, T any](slice S, predicate func(index int, item T) bool) []T {
 	result := make([]T, 0)
 	for i, item := range slice {
 		if predicate(i, item) {
@@ -106,4 +106,9 @@ func Filter[T any](slice []T, predicate func(index int, item T) bool) []T {
 	}
 
 	return result
+}
+
+// InSlice checks whether a given value exists within a slice.
+func InSlice[S ~[]E, E comparable](slice S, value E) bool {
+	return slices.Contains(slice, value)
 }
