@@ -112,3 +112,43 @@ func Filter[S ~[]T, T any](slice S, predicate func(index int, item T) bool) []T 
 func InSlice[S ~[]E, E comparable](slice S, value E) bool {
 	return slices.Contains(slice, value)
 }
+
+// Set returns a new slice with duplicate elements removed.
+// The order of elements is preserved based on their first occurrence.
+//
+// Note: Set is NOT concurrency-safe. The caller must ensure that
+// the input slice is not being modified concurrently.
+func Set[T comparable](arr []T) []T {
+	seen := make(map[T]struct{}, len(arr))
+	result := make([]T, 0, len(arr))
+
+	for _, v := range arr {
+		if _, ok := seen[v]; ok {
+			continue
+		}
+		seen[v] = struct{}{}
+		result = append(result, v)
+	}
+	return result
+}
+
+// SetBy returns a new slice with duplicate elements removed,
+// using keyFn to extract a comparable key for each element.
+// The order of elements is preserved based on their first occurrence.
+//
+// Note: UniqueBy is NOT concurrency-safe. The caller must ensure that
+// the input slice is not being modified concurrently.
+func SetBy[T any, K comparable](arr []T, keyFn func(T) K) []T {
+	seen := make(map[K]struct{}, len(arr))
+	result := make([]T, 0, len(arr))
+
+	for _, v := range arr {
+		key := keyFn(v)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
+		result = append(result, v)
+	}
+	return result
+}

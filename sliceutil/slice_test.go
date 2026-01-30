@@ -368,3 +368,91 @@ func BenchmarkFilter(b *testing.B) {
 		}
 	})
 }
+
+func TestSet(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []int
+		want []int
+	}{
+		{
+			name: "empty slice",
+			in:   []int{},
+			want: []int{},
+		},
+		{
+			name: "no duplicates",
+			in:   []int{1, 2, 3},
+			want: []int{1, 2, 3},
+		},
+		{
+			name: "with duplicates",
+			in:   []int{1, 2, 2, 3, 1},
+			want: []int{1, 2, 3},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := Set(tt.in)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("Set(%v) = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSetBy(t *testing.T) {
+	type User struct {
+		ID   int
+		Name string
+	}
+
+	tests := []struct {
+		name string
+		in   []User
+		want []User
+	}{
+		{
+			name: "empty slice",
+			in:   []User{},
+			want: []User{},
+		},
+		{
+			name: "unique by id",
+			in: []User{
+				{ID: 1, Name: "A"},
+				{ID: 2, Name: "B"},
+				{ID: 3, Name: "C"},
+			},
+			want: []User{
+				{ID: 1, Name: "A"},
+				{ID: 2, Name: "B"},
+				{ID: 3, Name: "C"},
+			},
+		},
+		{
+			name: "duplicate id",
+			in: []User{
+				{ID: 1, Name: "A"},
+				{ID: 2, Name: "B"},
+				{ID: 1, Name: "C"},
+			},
+			want: []User{
+				{ID: 1, Name: "A"},
+				{ID: 2, Name: "B"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := SetBy(tt.in, func(u User) int {
+				return u.ID
+			})
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Fatalf("UniqueBy(%v) = %v, want %v", tt.in, got, tt.want)
+			}
+		})
+	}
+}
