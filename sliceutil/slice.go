@@ -136,7 +136,7 @@ func Set[T comparable](arr []T) []T {
 // using keyFn to extract a comparable key for each element.
 // The order of elements is preserved based on their first occurrence.
 //
-// Note: UniqueBy is NOT concurrency-safe. The caller must ensure that
+// Note: SetBy is NOT concurrency-safe. The caller must ensure that
 // the input slice is not being modified concurrently.
 func SetBy[T any, K comparable](arr []T, keyFn func(T) K) []T {
 	seen := make(map[K]struct{}, len(arr))
